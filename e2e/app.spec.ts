@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 async function onboard(page: Page) {
   await page.goto('/')
   await page.getByLabel('Saldo awal kamu').fill('3000000')
@@ -113,4 +114,45 @@ test('confirms a purchase only after 24 hours', async ({ page }) => {
   await expect(page.getByText('Dibeli', { exact: true })).toBeVisible()
   await page.getByRole('navigation').getByRole('button', { name: 'Beranda' }).click()
   await expect(page.locator('.hero-amount')).toContainText('2.800.000')
+})
+
+test('backup and CSV downloads, restore validation and atomic replacement', async ({ page }) => {
+  await onboard(page)
+  await page.getByRole('button', { name: 'Pengaturan', exact: true }).click()
+  await page.getByRole('button', { name: 'Backup data', exact: false }).click()
+  await page.getByLabel('Password backup', { exact: true }).fill('backup-password')
+  await page.getByLabel('Ulangi password').fill('backup-password')
+  const downloadEvent = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Simpan backup terenkripsi' }).click()
+  const download = await downloadEvent
+  const path = (await download.path())!
+  const content = await readFile(path, 'utf8')
+  expect(JSON.parse(content).format).toBe('thinktwice')
+  expect(content).not.toContain('Harian')
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await page.getByRole('navigation').getByRole('button', { name: 'Beranda' }).click()
+  await transaction(page, 'Pemasukan', 'Tambahan setelah backup', '500000')
+  await page.getByRole('button', { name: 'Pengaturan', exact: true }).click()
+  await page.getByRole('button', { name: /Pulihkan backup/ }).click()
+  await page.getByLabel('Password backup', { exact: true }).fill('password-salah')
+  let chooserEvent = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Pilih & pulihkan backup' }).click()
+  await (await chooserEvent).setFiles(path)
+  await expect(page.getByRole('alert')).toContainText('password salah')
+  await page.getByLabel('Password backup', { exact: true }).fill('backup-password')
+  page.once('dialog', (d) => d.accept())
+  chooserEvent = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Pilih & pulihkan backup' }).click()
+  await (await chooserEvent).setFiles(path)
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await page.getByRole('navigation').getByRole('button', { name: 'Beranda' }).click()
+  await expect(page.locator('.hero-amount')).toContainText('3.000.000')
+  await page.getByRole('button', { name: 'Pengaturan', exact: true }).click()
+  const csvEvent = page.waitForEvent('download')
+  await page.getByRole('button', { name: /Ekspor transaksi/ }).click()
+  const csvDownload = await csvEvent
+  expect(csvDownload.suggestedFilename()).toMatch(/\.csv$/)
+  expect(await readFile((await csvDownload.path())!, 'utf8')).toContain('Saldo awal')
+  await page.getByRole('switch').click()
+  await expect(page.getByRole('status')).toContainText('Android')
 })

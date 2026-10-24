@@ -4,6 +4,7 @@ import {
   balances,
   change,
   defer,
+  estimate,
   freshState,
   resolve,
   validate,
@@ -41,6 +42,41 @@ const plan = {
   note: '',
 }
 describe('ledger invariants', () => {
+  it('prevents archiving a funded pocket or the last active pocket', () => {
+    expect(() =>
+      change(fixture(), (s) => {
+        s.pockets[0].archived = true
+      }),
+    ).toThrow()
+    const s = fixture()
+    s.entries = []
+    s.pockets = s.pockets.slice(0, 1)
+    expect(() =>
+      change(s, (d) => {
+        d.pockets[0].archived = true
+      }),
+    ).toThrow()
+  })
+  it('estimates goals only with enough history and positive net growth', () => {
+    const now = new Date('2026-10-24T00:00:00Z'),
+      s = fixture(),
+      p = { ...s.pockets[0], target: 2_000_000 }
+    expect(estimate(s, p, now)).toBe('Belum cukup data')
+    s.createdAt = '2026-01-01T00:00:00Z'
+    expect(estimate(s, p, now)).toBe('Belum cukup data')
+    s.entries.push({
+      id: 'income',
+      pocketId: 'a',
+      kind: 'income',
+      amount: 100_000,
+      name: 'Gaji',
+      category: 'Gaji',
+      note: '',
+      at: '2026-10-23T00:00:00Z',
+    })
+    expect(estimate(s, p, now)).toContain('Sekitar')
+    expect(estimate(s, { ...p, target: 100 }, now)).toBe('Target tercapai')
+  })
   it('reserves without reducing total and releases on cancellation', () => {
     let s = defer(fixture(), plan)
     expect(balances(s)).toEqual({ total: 1_000_000, reserved: 200_000, available: 800_000 })

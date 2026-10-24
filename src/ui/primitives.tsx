@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { gsap } from 'gsap'
 import {
   X,
@@ -107,6 +107,7 @@ export function Modal({
   children: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
   useEffect(() => {
     const dialog = ref.current!
     dialog.showModal()
@@ -122,6 +123,7 @@ export function Modal({
     <dialog
       ref={ref}
       className="sheet"
+      aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault()
         onClose()
@@ -141,7 +143,7 @@ export function Modal({
     >
       <div className="sheet-handle" />
       <header className="sheet-header">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button type="button" className="icon-button" aria-label="Tutup" onClick={onClose}>
           <X size={21} />
         </button>

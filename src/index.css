@@ -133,25 +133,20 @@ hr {
   width: 100%;
 }
 .stack {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  @apply flex flex-col gap-[18px];
 }
 .primary,
 .secondary {
   min-height: 50px;
   border-radius: 15px;
   padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @apply flex items-center justify-center;
   gap: 9px;
   font-weight: 700;
   font-size: 13px;
 }
 .primary {
-  background: #20384a;
-  color: white;
+  @apply bg-ink text-white;
 }
 .primary:hover:not(:disabled) {
   background: #31556c;

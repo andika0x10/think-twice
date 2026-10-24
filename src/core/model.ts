@@ -133,6 +133,8 @@ export function validate(state: State): State {
       throw new Error('Jenis transaksi tidak valid.')
     if (e.kind === 'expense' && !['need', 'want'].includes(e.need!))
       throw new Error('Jenis pengeluaran tidak valid.')
+    if (e.kind === 'expense' && e.need === 'want' && !e.planId)
+      throw new Error('Keinginan harus berasal dari jeda 24 jam.')
     if (e.kind === 'transfer') {
       pocket(e.toPocketId!)
       if (e.toPocketId === e.pocketId) throw new Error('Pilih dua kantong berbeda.')
@@ -154,6 +156,9 @@ export function validate(state: State): State {
     )
       throw new Error('Rencana tidak valid.')
     if (p.resolvedAt) date(p.resolvedAt)
+    if (p.status !== 'waiting' && !p.resolvedAt) throw new Error('Waktu keputusan tidak ditemukan.')
+    if (p.status === 'bought' && Date.parse(p.resolvedAt!) < Date.parse(p.readyAt))
+      throw new Error('Pembelian belum melewati jeda 24 jam.')
     const linked = state.entries.filter((e) => e.planId === p.id)
     if (
       (p.status === 'bought' && linked.length !== 1) ||
@@ -166,7 +171,8 @@ export function validate(state: State): State {
           e.kind !== 'expense' ||
           e.pocketId !== p.pocketId ||
           e.amount !== p.amount ||
-          e.need !== p.need,
+          e.need !== p.need ||
+          e.at !== p.resolvedAt,
       )
     )
       throw new Error('Transaksi pembelian tidak cocok.')
@@ -175,6 +181,9 @@ export function validate(state: State): State {
     if (e.planId && !state.plans.some((p) => p.id === e.planId))
       throw new Error('Rencana asal tidak ditemukan.')
   for (const p of state.pockets) {
+    const b = balances(state, p.id)
+    if (!Number.isSafeInteger(b.total) || !Number.isSafeInteger(b.reserved))
+      throw new Error('Jumlah saldo melampaui batas pencatatan.')
     if (balances(state, p.id).available < 0)
       throw new Error(`Saldo tersedia di ${p.name} tidak cukup.`)
     if (p.archived && (balances(state, p.id).total !== 0 || balances(state, p.id).reserved !== 0))
