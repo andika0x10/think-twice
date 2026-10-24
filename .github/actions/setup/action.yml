@@ -15,5 +15,16 @@ runs:
         java-version: '21'
         cache: gradle
     - uses: android-actions/setup-android@v3
+      with:
+        accept-android-sdk-licenses: false
+        packages: ''
+    - name: Accept Android SDK licenses
+      shell: bash
+      run: |
+        # sdkmanager may need more answers than setup-android's fixed input supplies.
+        # Ignore yes's SIGPIPE when sdkmanager finishes; preserve sdkmanager failures.
+        set +o pipefail
+        yes | sdkmanager --licenses
+        set -o pipefail
     - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       shell: bash
