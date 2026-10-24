@@ -95,11 +95,13 @@ function App() {
         setState(next)
         if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
           requestAnimationFrame(() => {
-            gsap.fromTo(
-              '.hero-pocket .coin',
-              { y: -18, rotation: -10 },
-              { y: 0, rotation: 0, duration: 0.45, ease: 'back.out(1.4)' },
-            )
+            const coins = document.querySelectorAll('.hero-pocket .coin')
+            if (coins.length)
+              gsap.fromTo(
+                coins,
+                { y: -18, rotation: -10 },
+                { y: 0, rotation: 0, duration: 0.45, ease: 'back.out(1.4)' },
+              )
           })
         }
         try {

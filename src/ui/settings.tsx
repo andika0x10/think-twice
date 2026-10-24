@@ -53,7 +53,7 @@ export function BackupForm({
         await saveFile(
           `think-twice-${new Date().toISOString().slice(0, 10)}.thinktwice`,
           await encryptBackup(state, password),
-          'application/json',
+          'application/octet-stream',
         )
       } else {
         const restored = await decryptBackup(await openFile(), password)

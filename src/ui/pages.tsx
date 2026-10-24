@@ -113,7 +113,9 @@ export function Home({
           </h1>
           <div className="hero-amount">
             <span>Saldo tersedia</span>
-            <strong>{rupiah(b.available)}</strong>
+            <strong style={b.available >= 1_000_000_000 ? { fontSize: 20 } : undefined}>
+              {rupiah(b.available)}
+            </strong>
           </div>
         </div>
         <div className="hero-pocket" aria-hidden="true">
@@ -325,7 +327,9 @@ export function Waiting({
         </span>
         <div>
           <small>Dana yang dicadangkan</small>
-          <strong>{rupiah(balances(state).reserved)}</strong>
+          <strong style={balances(state).reserved >= 1_000_000_000 ? { fontSize: 18 } : undefined}>
+            {rupiah(balances(state).reserved)}
+          </strong>
           <span>Masih milikmu. Belum dibelanjakan.</span>
         </div>
       </div>

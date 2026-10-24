@@ -12,7 +12,7 @@ npm run build
 if ($LASTEXITCODE -ne 0) { throw 'Build web gagal.' }
 npx cap sync android
 if ($LASTEXITCODE -ne 0) { throw 'Sinkronisasi Capacitor gagal.' }
-& ./android/gradlew.bat -p android assembleDebug --console=plain
+& ./android/gradlew.bat -p android :app:assembleDebug --console=plain
 if ($LASTEXITCODE -ne 0) { throw 'Build Android gagal.' }
 New-Item -ItemType Directory -Force -Path artifacts | Out-Null
 Copy-Item -LiteralPath 'android/app/build/outputs/apk/debug/app-debug.apk' -Destination 'artifacts/think-twice-debug.apk' -Force
