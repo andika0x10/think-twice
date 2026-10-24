@@ -1,4 +1,12 @@
 # Add project specific ProGuard rules here.
+# Capacitor's consumer rules retain plugin classes and annotated callbacks.
+# Retain the WebView bridge methods called by JavaScript rather than Java.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+# Tink (via AndroidX Security) references optional compile-time annotations.
+-dontwarn javax.annotation.Nullable
+-dontwarn javax.annotation.concurrent.GuardedBy
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #

@@ -45,6 +45,10 @@ Workflow **Release Android** menjalankan format, lint, unit test, build web, tes
 - `think-twice-vX.Y.Z.aab`: untuk distribusi melalui Play Console, tidak bisa dipasang langsung.
 - `SHA256SUMS.txt`: checksum SHA-256 kedua berkas.
 
+Build release memakai R8 untuk memperkecil kode dan menghapus resource yang tidak terpakai. APK tetap universal untuk semua arsitektur Android yang didukung; AAB memungkinkan Play Store mengirim library sesuai perangkat. Aturan Capacitor, bridge JavaScript, dan resource yang diakses berdasarkan nama dipertahankan agar plugin native tetap bekerja.
+
+Artifact `r8-mapping-vX.Y.Z` di Actions menyimpan `mapping.txt` selama 90 hari untuk membaca stack trace kode yang diobfuscate. Unduh dan arsipkan bersama versi release jika dibutuhkan untuk diagnosis jangka panjang.
+
 APK diverifikasi dengan `apksigner`; AAB diverifikasi dengan `jarsigner`. Keystore sementara dihapus setelah job selesai. Release memakai catatan perubahan otomatis GitHub.
 
 Jika gagal sebelum publish, perbaiki penyebabnya lalu **Re-run failed jobs**, atau jalankan **Actions → Release Android → Run workflow** dan isi tag yang sudah ada. Pilih branch utama yang memuat workflow ini. Release yang sudah diterbitkan tidak ditimpa otomatis; buat versi baru untuk perubahan berikutnya.

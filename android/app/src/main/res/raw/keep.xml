@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Capacitor and notification plugins can resolve these resources by name. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/think_twice_icon,@style/AppTheme.NoActionBar,@style/AppTheme.NoActionBarLaunch" />
