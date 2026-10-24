@@ -1,13 +1,21 @@
 import { Capacitor } from '@capacitor/core'
-import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite'
 import { freshState, validate, type State } from '../core/model'
 
 export interface Repository {
   load(): Promise<State>
   save(state: State): Promise<void>
 }
-export async function createRepository(): Promise<Repository> {
+let instance: Promise<Repository> | undefined
+export function createRepository(): Promise<Repository> {
+  instance ??= openRepository().catch((error) => {
+    instance = undefined
+    throw error
+  })
+  return instance
+}
+async function openRepository(): Promise<Repository> {
   if (Capacitor.isNativePlatform()) {
+    const { CapacitorSQLite, SQLiteConnection } = await import('@capacitor-community/sqlite')
     const sqlite = new SQLiteConnection(CapacitorSQLite)
     const db = await sqlite.createConnection('thinktwice', false, 'no-encryption', 1, false)
     await db.open()
