@@ -11,6 +11,7 @@ import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
 @CapacitorPlugin(name = "ThinkTwiceFiles")
@@ -46,8 +47,14 @@ public class ThinkTwiceFilesPlugin extends Plugin {
         if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) { call.reject("Pemilihan file dibatalkan."); return; }
         try (InputStream in = getContext().getContentResolver().openInputStream(result.getData().getData())) {
             if (in == null) throw new Exception("File tidak dapat dibuka.");
-            byte[] bytes = in.readNBytes(10_000_001);
-            if (bytes.length > 10_000_000) throw new Exception("Ukuran backup maksimal 10 MB.");
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            int count;
+            while ((count = in.read(chunk)) != -1) {
+                if (buffer.size() + count > 10_000_000) throw new Exception("Ukuran backup maksimal 10 MB.");
+                buffer.write(chunk, 0, count);
+            }
+            byte[] bytes = buffer.toByteArray();
             JSObject data = new JSObject();
             data.put("content", new String(bytes, StandardCharsets.UTF_8));
             call.resolve(data);
