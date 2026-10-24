@@ -334,3 +334,21 @@ label textarea {
     scroll-behavior: auto !important;
   }
 }
+
+/* Press feedback follows the action, without moving surrounding content. */
+@media (prefers-reduced-motion: no-preference) {
+  :is(.primary, .secondary, .pocket-card, .pause-banner, .review-banner) {
+    transition: scale 140ms ease-out;
+  }
+  :is(.primary, .secondary, .pocket-card, .pause-banner, .review-banner):active:not(:disabled) {
+    scale: 0.97;
+  }
+}
+
+.sheet[data-private] {
+  visibility: hidden;
+}
+.sheet[data-private]::backdrop {
+  background: #fffefa;
+  backdrop-filter: none;
+}

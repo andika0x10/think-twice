@@ -62,7 +62,12 @@ await page.getByRole('button', { name: 'Simpan backup terenkripsi' }).click()
 await expect
   .poll(async () => (await device.shell('dumpsys activity activities')).toString())
   .toMatch(/documentsui/i)
-await device.shell('input keyevent KEYCODE_BACK')
+// The first Back may dismiss the picker keyboard. Continue until the app resumes.
+for (let attempt = 0; attempt < 3; attempt++) {
+  await device.shell('input keyevent KEYCODE_BACK')
+  await page.waitForTimeout(300)
+  if ((await page.evaluate(() => window.Capacitor.Plugins.App.getState())).isActive) break
+}
 await expect(page.getByRole('alert')).toContainText('dibatalkan')
 await page.getByRole('button', { name: 'Tutup', exact: true }).click()
 console.log('PASS native save-file dialog and safe cancellation')

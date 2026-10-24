@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { animate, motion } from './motion'
 import {
   Plus,
   ArrowDownLeft,
@@ -26,7 +27,7 @@ import {
   type Pocket,
   type State,
 } from '../core/model'
-import { Empty, EntryRow, SectionTitle, WaitingBadge } from './primitives'
+import { Empty, EntryRow, SectionTitle, WaitingBadge, Progress } from './primitives'
 import type { Update } from './forms'
 export type OpenSheet = (
   type: 'income' | 'expense' | 'transfer' | 'pocket' | 'edit',
@@ -57,9 +58,7 @@ export function PocketCard({
       <small>{b.reserved > 0 ? `${rupiah(b.reserved)} dicadangkan` : 'Siap digunakan'}</small>
       {pocket.target && (
         <>
-          <div className="progress-track">
-            <span style={{ width: `${Math.min(100, (b.available / pocket.target) * 100)}%` }} />
-          </div>
+          <Progress value={(b.available / pocket.target) * 100} />
           <span className="target-copy">
             {Math.floor((b.available / pocket.target) * 100)}% dari {rupiah(pocket.target)}
           </span>
@@ -77,6 +76,34 @@ export function Home({
   open: OpenSheet
   go: (page: string) => void
 }) {
+  const hero = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    const root = hero.current!
+    return animate(root, (timeline) => {
+      timeline.from(root.querySelector('.hero-pocket'), {
+        y: 18,
+        rotation: '-=12',
+        scale: 0.88,
+        duration: 0.55,
+        ease: motion.settle,
+        clearProps: 'transform',
+      })
+      root.querySelectorAll('.coin').forEach((coin, index) => {
+        timeline.from(
+          coin,
+          {
+            y: -36,
+            rotation: '+=22',
+            scale: 0.75,
+            duration: 0.5,
+            ease: 'bounce.out',
+            clearProps: 'transform',
+          },
+          0.12 + index * 0.08,
+        )
+      })
+    })
+  }, [])
   const [today] = useState(() => new Date())
   const b = balances(state),
     waiting = state.plans.filter((p) => p.status === 'waiting'),
@@ -103,7 +130,7 @@ export function Home({
           Lokal & pribadi
         </span>
       </div>
-      <section className="balance-hero">
+      <section ref={hero} className="balance-hero">
         <div className="balance-copy">
           <span className="intro-label">Sedikit jeda, lebih bermakna.</span>
           <h1>
@@ -254,9 +281,7 @@ export function Pockets({ state, open }: { state: State; open: OpenSheet }) {
                       ? `Tujuan: ${new Date(p.deadline + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
                       : 'Tanpa tenggat, tetap berjalan.'}
                   </small>
-                  <div className="progress-track">
-                    <span style={{ width: `${Math.min(100, (b.available / p.target!) * 100)}%` }} />
-                  </div>
+                  <Progress value={(b.available / p.target!) * 100} />
                   <small>
                     {rupiah(b.available)} / {rupiah(p.target!)}
                   </small>

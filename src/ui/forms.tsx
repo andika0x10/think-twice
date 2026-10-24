@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { animate, motion } from './motion'
 import { ArrowRight, ShieldCheck, Pause } from 'lucide-react'
 import {
   addEntry,
@@ -91,6 +92,20 @@ export function Onboarding({
   onRestore: () => void
   busy: boolean
 }) {
+  const art = useRef<HTMLDivElement>(null)
+  useLayoutEffect(
+    () =>
+      animate(art.current!, (timeline) => {
+        timeline.from(art.current, {
+          y: 16,
+          scale: 0.9,
+          duration: motion.enter,
+          ease: motion.settle,
+          clearProps: 'transform',
+        })
+      }),
+    [],
+  )
   const [error, setError] = useState('')
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -135,7 +150,7 @@ export function Onboarding({
   return (
     <main className="onboarding">
       <Brand />
-      <div className="onboarding-art" aria-hidden="true">
+      <div ref={art} className="onboarding-art" aria-hidden="true">
         <div className="little-coin">Rp</div>
         <div className="pocket-art">
           <span>

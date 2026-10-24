@@ -6,7 +6,7 @@ Think Twice 1.0.0, application ID `com.andika.thinktwice`.
 
 - Prettier, Oxlint, TypeScript, dan production build: lulus.
 - 19 unit test: lulus. Mencakup saldo, transfer, cadangan, batas 24 jam, konfirmasi ganda, validasi referensi, pengarsipan, estimasi tujuan, enkripsi/pemulihan backup, escaping CSV, PIN, penundaan percobaan, dan jadwal notifikasi.
-- 5 skenario browser Chrome: lulus. Mencakup onboarding, CRUD transaksi, persistensi, transfer/target, pencarian, PIN, pembelian setelah 24 jam, backup–restore, password salah, ekspor CSV, dan lebar layar 360 px.
+- 11 skenario browser Chrome: lulus. Mencakup onboarding, CRUD transaksi, persistensi, transfer/target, pencarian, PIN, pembelian setelah 24 jam, backup–restore, password salah, ekspor CSV, lebar layar 360 px dan desktop, animasi aktif, serta perubahan reduced motion saat animasi berjalan.
 - Screenshot onboarding dan seluruh halaman utama diperiksa. Screenshot browser dan Android tersedia di `test-results/` setelah pengujian.
 
 ## Android
@@ -21,6 +21,8 @@ Verifikasi dilakukan pada emulator Android API 37, melalui WebView aplikasi hasi
 - Dialog simpan file Android terbuka; pembatalan mengembalikan kendali dengan pesan yang jelas dan tidak mengubah data.
 - PIN tersimpan melalui secure storage native; cold start terkunci, PIN salah ditolak, dan PIN benar membuka aplikasi.
 - Kembali setelah lebih dari 30 detik waktu perangkat di latar belakang menampilkan layar kunci.
+- APK terbaru dengan motion diverifikasi pada emulator API 37 dengan partisi data uji terpisah. Unlock, animasi beranda hingga keadaan akhir, navigasi tab, penutupan sheet melalui Back native, penyimpanan SQLite diikuti feedback sukses, serta reduced motion: lulus. Tidak ada runtime error WebView selama pemeriksaan motion.
+- Pembatalan dialog file membutuhkan Back tambahan jika keyboard pemilih file masih terbuka; smoke script kini menunggu aplikasi kembali aktif. Screenshot akhir motion: `test-results/android-motion-home.png`.
 
 Script pengujian native memakai emulator dengan data uji baru, bukan perangkat berisi data pribadi:
 
@@ -33,5 +35,5 @@ Autentikasi sidik jari/wajah nyata masih perlu diverifikasi pada perangkat denga
 SHA-256 APK:
 
 ```text
-CDE712C18BDA728D207B57F7E5C0D3F4A6D4DD3E0C5C71AA59467B05C7F82FE5
+54FC36CC76861BB915CB33F9363581AC7B80F2E64BA67E2B6088FE4CB53D3D37
 ```

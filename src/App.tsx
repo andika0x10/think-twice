@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App as NativeApp } from '@capacitor/app'
 import { LocalNotifications } from '@capacitor/local-notifications'
@@ -12,7 +12,7 @@ import {
   LoaderCircle,
   ShieldCheck,
 } from 'lucide-react'
-import { gsap } from 'gsap'
+import { animate, bounceCoins, motion } from './ui/motion'
 import { freshState, type Entry, type Pocket, type State } from './core/model'
 import { createRepository, type Repository } from './data/repository'
 import { clearLock, getLock } from './platform/security'
@@ -37,6 +37,13 @@ function App() {
   const [error, setError] = useState('')
   const [page, setPage] = useState('home')
   const [sheet, setSheet] = useState<Sheet | null>(null)
+  const [closingSheet, setClosingSheet] = useState(false)
+  const savedSheet = useRef(false)
+  const [celebration, setCelebration] = useState(0)
+  const consumedCelebration = useRef(0)
+  const shell = useRef<HTMLDivElement>(null)
+  const toastElement = useRef<HTMLDivElement>(null)
+  const previousPage = useRef(page)
   const [toast, setToast] = useState('')
   const [busy, setBusy] = useState(false)
   const [locked, setLocked] = useState(false)
@@ -93,17 +100,6 @@ function App() {
       try {
         await repo.current.save(next)
         setState(next)
-        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          requestAnimationFrame(() => {
-            const coins = document.querySelectorAll('.hero-pocket .coin')
-            if (coins.length)
-              gsap.fromTo(
-                coins,
-                { y: -18, rotation: -10 },
-                { y: 0, rotation: 0, duration: 0.45, ease: 'back.out(1.4)' },
-              )
-          })
-        }
         try {
           await syncNotifications(next)
         } catch {
@@ -125,18 +121,64 @@ function App() {
     const timer = setTimeout(() => setToast(''), 5500)
     return () => clearTimeout(timer)
   }, [toast])
-  useEffect(() => {
-    if (content.current && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const animation = gsap.fromTo(
-        content.current,
-        { opacity: 0.55 },
-        { opacity: 1, duration: 0.2 },
+  const ready = !!state?.onboarded && !locked && !error
+  useLayoutEffect(() => {
+    const root = shell.current
+    const target = content.current
+    if (!ready || !root || !target) return
+    const before = previousPage.current
+    previousPage.current = page
+    const order = [...nav.map((item) => item.id), 'review', 'settings']
+    const direction = order.indexOf(page) >= order.indexOf(before) ? 1 : -1
+    return animate(root, (timeline) => {
+      timeline.fromTo(
+        target,
+        { x: direction * 12, opacity: 0.65 },
+        {
+          x: 0,
+          opacity: 1,
+          duration: motion.navigate,
+          ease: 'power2.out',
+          clearProps: 'transform,opacity',
+        },
       )
-      return () => {
-        animation.kill()
-      }
-    }
-  }, [page])
+      const icon = root.querySelector('.bottom-nav .active svg')
+      if (icon)
+        timeline.from(
+          icon,
+          {
+            y: -5,
+            scale: 1.15,
+            duration: motion.feedback,
+            ease: motion.settle,
+            clearProps: 'transform',
+          },
+          0,
+        )
+    })
+  }, [page, ready])
+  useLayoutEffect(() => {
+    if (celebration === consumedCelebration.current) return
+    consumedCelebration.current = celebration
+    if (!ready || page !== 'home' || !content.current) return
+    return bounceCoins(content.current)
+  }, [celebration, ready, page])
+  useLayoutEffect(() => {
+    if (!toast || !toastElement.current) return
+    return animate(toastElement.current, (timeline) => {
+      timeline.from(toastElement.current, {
+        y: 10,
+        scale: 0.95,
+        opacity: 0,
+        duration: motion.sheetOpen,
+        ease: motion.settle,
+        clearProps: 'transform,opacity',
+      })
+    })
+  }, [toast])
+  const dismissSheet = useCallback(() => {
+    if (!saving.current) setClosingSheet(true)
+  }, [])
   useEffect(() => {
     const handles: Promise<{ remove: () => Promise<void> }>[] = []
     const handleState = (active: boolean) => {
@@ -156,7 +198,7 @@ function App() {
       handles.push(NativeApp.addListener('appStateChange', ({ isActive }) => handleState(isActive)))
       handles.push(
         NativeApp.addListener('backButton', () => {
-          if (sheetRef.current) setSheet(null)
+          if (sheetRef.current) dismissSheet()
           else if (pageRef.current !== 'home') setPage('home')
           else void NativeApp.exitApp()
         }),
@@ -177,15 +219,21 @@ function App() {
         void h.then((x) => x.remove())
       })
     }
-  }, [])
+  }, [dismissSheet])
   const go = (p: string) => {
+    if (p === page) return
     setPage(p)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
-  const open: OpenSheet = (type, item) => setSheet({ type, item })
+  const openSheet = (next: Sheet) => {
+    savedSheet.current = false
+    setClosingSheet(false)
+    setSheet(next)
+  }
+  const open: OpenSheet = (type, item) => openSheet({ type, item })
   const done = () => {
-    setSheet(null)
-    notify('Tersimpan. Satu langkah lebih terarah.')
+    savedSheet.current = true
+    setClosingSheet(true)
   }
   async function reset() {
     await save(freshState())
@@ -218,6 +266,18 @@ function App() {
   if (locked) return <LockScreen onUnlock={() => setLocked(false)} onReset={reset} />
   const modal = sheet && (
     <Modal
+      closing={closingSheet}
+      obscured={privateScreen}
+      onExited={() => {
+        setSheet(null)
+        setClosingSheet(false)
+        if (savedSheet.current) {
+          savedSheet.current = false
+          notify('Tersimpan. Satu langkah lebih terarah.')
+          if (page === 'home' && ['income', 'expense', 'transfer', 'edit'].includes(sheet.type))
+            setCelebration((value) => value + 1)
+        }
+      }}
       title={
         {
           income: 'Catat pemasukan',
@@ -230,9 +290,7 @@ function App() {
           pin: 'Kunci aplikasi',
         }[sheet.type]
       }
-      onClose={() => {
-        if (!busy) setSheet(null)
-      }}
+      onClose={dismissSheet}
     >
       {sheet.type === 'pocket' ? (
         <PocketForm
@@ -265,9 +323,9 @@ function App() {
   return (
     <>
       {!state.onboarded ? (
-        <Onboarding save={save} onRestore={() => setSheet({ type: 'restore' })} busy={busy} />
+        <Onboarding save={save} onRestore={() => openSheet({ type: 'restore' })} busy={busy} />
       ) : (
-        <div className="app-shell">
+        <div ref={shell} className="app-shell">
           <header className="app-header">
             <div className="header-inner">
               {page === 'settings' || page === 'review' ? (
@@ -316,7 +374,7 @@ function App() {
               <Settings
                 state={state}
                 save={save}
-                open={(type) => setSheet({ type })}
+                open={(type) => openSheet({ type })}
                 hasLock={hasLock}
                 notify={notify}
               />
@@ -342,7 +400,7 @@ function App() {
       )}
       {modal}
       {toast && (
-        <div className="toast" role="status">
+        <div ref={toastElement} className="toast" role="status">
           {toast}
           <button onClick={() => setToast('')} aria-label="Tutup pemberitahuan">
             ×

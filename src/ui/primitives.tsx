@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
-import { gsap } from 'gsap'
+import { useLayoutEffect, useId, useRef, type ReactNode } from 'react'
+import { animate, motion } from './motion'
 import {
   X,
   Wallet,
@@ -100,30 +100,76 @@ export function WaitingBadge() {
 export function Modal({
   title,
   onClose,
+  closing,
+  obscured,
+  onExited,
   children,
 }: {
   title: string
+  closing: boolean
+  obscured: boolean
+  onExited: () => void
   onClose: () => void
   children: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
-  useEffect(() => {
+  const exited = useRef(onExited)
+  useLayoutEffect(() => {
+    exited.current = onExited
+  }, [onExited])
+  useLayoutEffect(() => {
     const dialog = ref.current!
+    const trigger = document.activeElement
     dialog.showModal()
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
-      gsap.fromTo(
-        dialog,
-        { y: 40, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.28, ease: 'power2.out' },
-      )
-    return () => dialog.close()
+    return () => {
+      dialog.close()
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus()
+    }
   }, [])
+  useLayoutEffect(() => {
+    const dialog = ref.current!
+    // Disabling the form can blur its submit button. Keep focus in the dialog
+    // until the native close restores the original trigger.
+    if (
+      closing &&
+      (!dialog.contains(document.activeElement) || document.activeElement?.matches(':disabled'))
+    )
+      dialog.querySelector<HTMLButtonElement>('button[aria-label="Tutup"]')?.focus()
+    const distance = matchMedia('(max-width: 650px)').matches ? 48 : 16
+    return animate(
+      dialog,
+      (timeline) => {
+        if (closing)
+          timeline.to(dialog, {
+            y: distance,
+            opacity: 0,
+            duration: motion.sheetClose,
+            ease: 'power2.in',
+          })
+        else
+          timeline.fromTo(
+            dialog,
+            { y: distance, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: motion.sheetOpen,
+              ease: motion.settle,
+              clearProps: 'transform,opacity',
+            },
+          )
+      },
+      closing ? () => exited.current() : undefined,
+    )
+  }, [closing])
   return (
     <dialog
       ref={ref}
       className="sheet"
       aria-labelledby={titleId}
+      data-closing={closing || undefined}
+      data-private={obscured || undefined}
       onCancel={(e) => {
         e.preventDefault()
         onClose()
@@ -148,7 +194,46 @@ export function Modal({
           <X size={21} />
         </button>
       </header>
-      {children}
+      <fieldset className="sheet-content" disabled={closing}>
+        {children}
+      </fieldset>
     </dialog>
+  )
+}
+
+export function Progress({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const previous = useRef(0)
+  const percent = Math.max(0, Math.min(100, value))
+  useLayoutEffect(() => {
+    const bar = ref.current!
+    bar.style.width = `${percent}%`
+    let cleanup = () => {}
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      observer.disconnect()
+      cleanup = animate(bar, (timeline) => {
+        timeline.fromTo(
+          bar,
+          { width: `${previous.current}%` },
+          {
+            width: `${percent}%`,
+            duration: motion.progress,
+            ease: 'power2.out',
+          },
+        )
+      })
+      previous.current = percent
+    })
+    observer.observe(bar.parentElement!)
+    return () => {
+      observer.disconnect()
+      cleanup()
+    }
+  }, [percent])
+  return (
+    <div className="progress-track">
+      <span ref={ref} style={{ width: `${percent}%` }} />
+    </div>
   )
 }

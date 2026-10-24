@@ -156,3 +156,186 @@ test('backup and CSV downloads, restore validation and atomic replacement', asyn
   await page.getByRole('switch').click()
   await expect(page.getByRole('status')).toContainText('Android')
 })
+
+test.describe('playful motion', () => {
+  test.use({ reducedMotion: 'no-preference' })
+
+  test('entrances settle, navigation can be interrupted, and sheet retains focus through exit', async ({
+    page,
+  }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await onboard(page)
+    const hero = page.locator('.hero-pocket')
+    await expect.poll(() => hero.evaluate((element) => element.style.transform)).not.toBe('')
+    await expect.poll(() => hero.evaluate((element) => element.style.transform)).toBe('')
+    const restingRotation = await hero.evaluate((element) => getComputedStyle(element).transform)
+    expect(restingRotation).not.toBe('none')
+    await page.reload()
+    await expect(hero).toBeVisible()
+    await expect.poll(() => hero.evaluate((element) => element.style.transform)).not.toBe('')
+    await expect.poll(() => hero.evaluate((element) => element.style.transform)).toBe('')
+    expect(await hero.evaluate((element) => getComputedStyle(element).transform)).toBe(
+      restingRotation,
+    )
+    await page.evaluate(() => {
+      const buttons = document.querySelectorAll<HTMLButtonElement>('.bottom-nav button')
+      buttons[1].click()
+    })
+    await expect(page.getByRole('heading', { name: 'Kantong kamu', exact: true })).toBeVisible()
+    await page.evaluate(() =>
+      document.querySelectorAll<HTMLButtonElement>('.bottom-nav button')[0].click(),
+    )
+    await expect
+      .poll(() => page.locator('.main-content').evaluate((element) => element.style.transform))
+      .toBe('')
+    await page.getByRole('navigation').getByRole('button', { name: 'Beranda' }).click()
+    expect(await page.locator('.main-content').evaluate((element) => element.style.transform)).toBe(
+      '',
+    )
+
+    const trigger = page.getByRole('button', { name: 'Pemasukan', exact: true })
+    for (const method of ['button', 'escape', 'backdrop']) {
+      await trigger.click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toBeVisible()
+      await expect.poll(() => dialog.evaluate((element) => element.style.transform)).toBe('')
+      if (method === 'escape') await page.keyboard.press('Escape')
+      else if (method === 'backdrop') await page.mouse.click(2, 2)
+      else {
+        const duringExit = await dialog.evaluate(async (element) => {
+          element.querySelector<HTMLButtonElement>('button[aria-label="Tutup"]')!.click()
+          await new Promise(requestAnimationFrame)
+          return {
+            closing: element.getAttribute('data-closing'),
+            open: (element as HTMLDialogElement).open,
+            focusInside: element.contains(document.activeElement),
+          }
+        })
+        expect(duringExit).toEqual({ closing: 'true', open: true, focusInside: true })
+      }
+      await expect(dialog).not.toBeVisible()
+      await expect(trigger).toBeFocused()
+    }
+    await page.screenshot({ path: 'test-results/motion-mobile.png', fullPage: true })
+    expect(errors).toEqual([])
+  })
+
+  test('saving succeeds after sheet exit; validation failure keeps dialog open', async ({
+    page,
+  }) => {
+    await onboard(page)
+    await page.getByRole('button', { name: 'Pengeluaran', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Nominal', { exact: true }).fill('999999999')
+    await dialog.getByLabel('Nama transaksi').fill('Melebihi saldo')
+    await dialog.getByRole('button', { name: 'Simpan transaksi', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toBeVisible()
+    await expect(dialog).toBeVisible()
+    await expect(page.getByRole('status')).not.toBeVisible()
+    await dialog.getByLabel('Nominal', { exact: true }).fill('10000')
+    const exitFocus = dialog.evaluate(
+      (element) =>
+        new Promise<boolean>((resolve) => {
+          const observer = new MutationObserver(() => {
+            if (!element.hasAttribute('data-closing')) return
+            observer.disconnect()
+            resolve(element.contains(document.activeElement))
+          })
+          observer.observe(element, { attributes: true, attributeFilter: ['data-closing'] })
+        }),
+    )
+    await dialog.getByRole('button', { name: 'Simpan transaksi', exact: true }).click()
+    expect(await exitFocus).toBeTruthy()
+    await expect(dialog).not.toBeVisible()
+    await expect(page.getByRole('status')).toContainText('Tersimpan')
+    await expect
+      .poll(() => page.locator('.coin-one').evaluate((element) => element.style.transform))
+      .not.toBe('')
+    await expect(page.locator('.hero-amount')).toContainText('2.990.000')
+    await expect
+      .poll(() => page.locator('.coin-one').evaluate((element) => element.style.transform))
+      .toBe('')
+    await page.getByRole('navigation').getByRole('button', { name: 'Kantong', exact: true }).click()
+    await page.getByRole('navigation').getByRole('button', { name: 'Beranda' }).click()
+    await expect
+      .poll(() => page.locator('.coin-one').evaluate((element) => element.style.transform))
+      .toBe('')
+  })
+
+  test('runtime reduced motion finishes entrances and exits immediately', async ({ page }) => {
+    await onboard(page)
+    await page.getByRole('button', { name: 'Pemasukan', exact: true }).click()
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const dialog = page.getByRole('dialog')
+    await expect.poll(() => dialog.evaluate((element) => element.style.transform)).toBe('')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await transaction(page, 'Pemasukan', 'Tanpa motion', '10000')
+    expect(await page.locator('.coin-one').evaluate((element) => element.style.transform)).toBe('')
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.getByRole('button', { name: 'Pemasukan', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Tutup', exact: true }).click()
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect(dialog).toHaveCount(0)
+  })
+
+  test('unlock replays the hero and privacy immediately covers an open sheet', async ({ page }) => {
+    await onboard(page)
+    await page.getByRole('button', { name: 'Pengaturan', exact: true }).click()
+    await page.getByRole('button', { name: /Kunci aplikasi/ }).click()
+    await page.getByLabel('PIN baru (6 digit)').fill('123456')
+    await page.getByLabel('Ulangi PIN').fill('123456')
+    await page.getByRole('button', { name: 'Simpan kunci aplikasi' }).click()
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await page.reload()
+    await page.getByLabel('PIN 6 digit').fill('123456')
+    await page.getByRole('button', { name: 'Buka aplikasi' }).click()
+    await expect
+      .poll(() => page.locator('.hero-pocket').evaluate((element) => element.style.transform))
+      .not.toBe('')
+    await page.getByRole('button', { name: 'Pemasukan', exact: true }).click()
+    await page.getByLabel('Nama transaksi').fill('Tetap di formulir')
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await expect(page.locator('.privacy-overlay')).toBeVisible()
+    await expect(page.locator('dialog')).toHaveCSS('visibility', 'hidden')
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await expect(page.getByLabel('Nama transaksi')).toHaveValue('Tetap di formulir')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+  })
+
+  for (const width of [360, 1280]) {
+    test(`motion layout and target progress at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await onboard(page)
+      await page.getByRole('button', { name: /Harian.*Siap digunakan/ }).click()
+      await page.getByLabel('Target tabungan (opsional)').fill('3000000')
+      await page.getByRole('button', { name: 'Simpan kantong' }).click()
+      await expect(page.getByRole('dialog')).not.toBeVisible()
+      const bar = page.locator('.home-pockets .progress-track > span')
+      await expect.poll(() => bar.evaluate((element) => element.style.width)).toBe('50%')
+      await page.screenshot({ path: `test-results/motion-${width}.png`, fullPage: true })
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      ).toBeTruthy()
+      await page.getByRole('button', { name: 'Pemasukan', exact: true }).click()
+      await page.screenshot({ path: `test-results/motion-sheet-${width}.png` })
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).not.toBeVisible()
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await transaction(page, 'Pemasukan', 'Progres baru', '300000')
+      await expect.poll(() => bar.evaluate((element) => element.style.width)).toBe('60%')
+      expect(await bar.evaluate((element) => element.style.transform)).toBe('')
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await transaction(page, 'Pengeluaran', 'Kosongkan Harian', '1800000')
+      await expect.poll(() => bar.evaluate((element) => element.style.width)).toBe('0%')
+    })
+  }
+})
