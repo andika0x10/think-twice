@@ -1,0 +1,19 @@
+name: Setup build tools
+description: Install Node.js dependencies, JDK 21, and Android SDK 36
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: npm
+    - run: npm ci
+      shell: bash
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '21'
+        cache: gradle
+    - uses: android-actions/setup-android@v3
+    - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      shell: bash
