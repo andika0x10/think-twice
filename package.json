@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "android:build": "powershell -ExecutionPolicy Bypass -File scripts/build-android.ps1",
+    "android:sync": "npm run build && cap sync android",
+    "check": "npm run format:check && npm run lint && npm test && npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
