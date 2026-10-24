@@ -56,6 +56,9 @@ it('schedules future waiting items and Sunday 19:00, omits resolved and past ite
   await syncNotifications(s)
   const notifications = api.schedule.mock.calls[0][0].notifications
   expect(notifications).toHaveLength(2)
+  expect(
+    notifications.every((n: { isExactNotification: boolean }) => n.isExactNotification === false),
+  ).toBe(true)
   expect(notifications[0].schedule.at.getTime()).toBe(Date.parse(s.plans[0].readyAt))
   expect(notifications[1].schedule).toEqual({
     on: { weekday: 1, hour: 19, minute: 0 },

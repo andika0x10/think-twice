@@ -23,6 +23,7 @@ export async function syncNotifications(state: State) {
       title: 'Sudah 24 jam. Masih ingin membelinya?',
       body: p.name,
       extra: { page: 'waiting' },
+      isExactNotification: false,
       schedule: { at: new Date(p.readyAt) },
     }))
   await LocalNotifications.schedule({
@@ -33,6 +34,7 @@ export async function syncNotifications(state: State) {
         title: 'Waktunya review mingguan',
         body: 'Lihat ke mana uangmu pergi minggu ini.',
         extra: { page: 'review' },
+        isExactNotification: false,
         schedule: { on: { weekday: 1, hour: 19, minute: 0 }, repeats: true },
       },
     ],

@@ -66,3 +66,5 @@ Pengingat meminta izin saat diaktifkan: akhir jeda dan Minggu pukul 19.00 waktu 
 ## Git
 
 Commit per kelompok perubahan yang lolos pemeriksaan menggunakan trailer `Co-authored-by: GPT-6.1 Sol <noreply@openai.com>`. Tidak ada push otomatis. Versi pertama tidak mencakup cloud, akun, bank, transaksi berulang, atau publikasi Play Store.
+
+Hasil pengujian dan batas verifikasi perangkat tersedia di [VALIDATION.md](VALIDATION.md).
