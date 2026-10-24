@@ -89,6 +89,50 @@ test('pocket goal, transfer, review and PIN lock', async ({ page }) => {
   await page.getByRole('button', { name: 'Buka aplikasi' }).click()
   await expect(page.getByRole('heading', { name: 'Punya rencana. Punya kendali.' })).toBeVisible()
 })
+test('resume events do not relock a successful unlock or extend the background deadline', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date('2026-10-24T10:00:00+07:00') })
+  await onboard(page)
+  await page.getByRole('button', { name: 'Pengaturan', exact: true }).click()
+  await page.getByRole('button', { name: /Kunci aplikasi/ }).click()
+  await page.getByLabel('PIN baru (6 digit)').fill('123456')
+  await page.getByLabel('Ulangi PIN').fill('123456')
+  await page.getByRole('button', { name: 'Simpan kunci aplikasi' }).click()
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  const visibility = async (hidden: boolean) => {
+    await page.evaluate((value) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, value })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }, hidden)
+  }
+  await visibility(true)
+  await page.clock.fastForward(20000)
+  await visibility(true)
+  await page.clock.fastForward(11000)
+  await visibility(false)
+  await expect(page.getByRole('heading', { name: 'Ruang pribadimu.' })).toBeVisible()
+  await page.getByLabel('PIN 6 digit').fill('123456')
+  await page.getByRole('button', { name: 'Buka aplikasi' }).click()
+  await visibility(false)
+  await expect(page.getByRole('heading', { name: 'Ruang pribadimu.' })).not.toBeVisible()
+  // A successful result may also arrive before the native Activity resumes.
+  await page.reload()
+  await expect(page.getByLabel('PIN 6 digit')).toBeVisible()
+  await visibility(true)
+  await page.clock.fastForward(31000)
+  await page.getByLabel('PIN 6 digit').fill('123456')
+  await page.getByRole('button', { name: 'Buka aplikasi' }).click()
+  await visibility(false)
+  await expect(page.getByRole('heading', { name: 'Ruang pribadimu.' })).not.toBeVisible()
+  await expect(page.locator('.privacy-overlay')).not.toBeVisible()
+  // A subsequent real background period must still lock the app.
+  await visibility(true)
+  await page.clock.fastForward(31000)
+  await visibility(false)
+  await expect(page.getByRole('heading', { name: 'Ruang pribadimu.' })).toBeVisible()
+})
+
 test('onboarding validates totals and layout fits 360px', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 })
   await page.goto('/')

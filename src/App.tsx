@@ -183,11 +183,14 @@ function App() {
     const handles: Promise<{ remove: () => Promise<void> }>[] = []
     const handleState = (active: boolean) => {
       if (!active) {
-        hiddenAt.current = Date.now()
+        // Duplicate pause events must not restart the background timeout.
+        if (!hiddenAt.current) hiddenAt.current = Date.now()
         if (hasLockRef.current) setPrivateScreen(true)
       } else {
+        const backgroundAt = hiddenAt.current
+        hiddenAt.current = 0
         setNow(Date.now())
-        if (hiddenAt.current && Date.now() - hiddenAt.current >= 30000 && hasLockRef.current) {
+        if (backgroundAt && Date.now() - backgroundAt >= 30000 && hasLockRef.current) {
           setLocked(true)
           setSheet(null)
         }
@@ -263,7 +266,18 @@ function App() {
         <p>Menyiapkan ruang untuk uangmu…</p>
       </main>
     )
-  if (locked) return <LockScreen onUnlock={() => setLocked(false)} onReset={reset} />
+  if (locked)
+    return (
+      <LockScreen
+        onUnlock={() => {
+          // Native biometric results and Activity resume can arrive in either order.
+          hiddenAt.current = 0
+          setPrivateScreen(false)
+          setLocked(false)
+        }}
+        onReset={reset}
+      />
+    )
   const modal = sheet && (
     <Modal
       closing={closingSheet}

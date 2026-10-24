@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Capacitor } from '@capacitor/core'
 import {
   Download,
@@ -16,6 +16,7 @@ import { encryptBackup, decryptBackup, csv } from '../platform/backup'
 import { saveFile, openFile } from '../platform/files'
 import {
   biometricAvailable,
+  biometricErrorMessage,
   clearLock,
   getLock,
   setPin,
@@ -262,6 +263,7 @@ export function LockScreen({
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [biometric, setBiometric] = useState(false)
+  const authenticating = useRef(false)
   useEffect(() => {
     getLock()
       .then((c) => setBiometric(!!c?.biometric && Capacitor.isNativePlatform()))
@@ -269,6 +271,8 @@ export function LockScreen({
   }, [])
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (authenticating.current) return
+    authenticating.current = true
     setBusy(true)
     setError('')
     try {
@@ -277,17 +281,22 @@ export function LockScreen({
     } catch (e) {
       setError((e as Error).message)
     } finally {
+      authenticating.current = false
       setBusy(false)
     }
   }
   async function bio() {
+    if (authenticating.current) return
+    authenticating.current = true
     setBusy(true)
+    setError('')
     try {
       await unlockBiometric()
       onUnlock()
-    } catch {
-      setError('Biometrik belum berhasil. Coba lagi atau gunakan PIN.')
+    } catch (e) {
+      setError(biometricErrorMessage(e))
     } finally {
+      authenticating.current = false
       setBusy(false)
     }
   }
@@ -459,7 +468,7 @@ export function Settings({
           Tanpa akun. Tanpa server. Semua catatan ada di perangkat ini. Simpan backup secara berkala
           ke tempat yang aman.
         </p>
-        <small>Think Twice · versi 1.0.0</small>
+        <small>Think Twice · versi 1.0.1</small>
       </div>
     </>
   )

@@ -1,5 +1,15 @@
 # Hasil verifikasi — 24 Oktober 2026
 
+## Perbaikan biometrik 1.0.1
+
+- Timestamp latar belakang dikonsumsi saat resume dan dibersihkan setelah unlock berhasil. Resume berulang serta urutan callback autentikasi sebelum/sesudah resume tidak lagi mengunci ulang aplikasi memakai timestamp lama. Pause berulang tetap memakai awal periode latar belakang.
+- Permintaan biometrik bersamaan ditolak; PIN dan biometrik di layar kunci tidak berjalan bersamaan. Ketersediaan sensor diperiksa ulang pada setiap percobaan.
+- Pembatalan kembali ke PIN tanpa pesan gagal; lockout Android, sensor tidak tersedia, enrollment kosong, serta interupsi sistem mendapat pesan yang sesuai.
+- 23 unit test lulus, termasuk mock plugin native untuk perubahan ketersediaan, permintaan ganda, pembatalan, interupsi, dan percobaan ulang. Tes browser regresi mencakup kedua urutan callback unlock/resume, event berulang, dan penguncian setelah periode latar belakang berikutnya.
+- Build APK/AAB release dengan R8 dan lint Android lulus. Tes sensor sidik jari/wajah fisik belum dilakukan karena tidak ada perangkat Android yang terhubung pada sesi ini.
+
+Catatan berikut merekam verifikasi versi 1.0.0 sebelumnya.
+
 Think Twice 1.0.0, application ID `com.andika.thinktwice`.
 
 ## Pemeriksaan otomatis
