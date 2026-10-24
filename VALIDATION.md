@@ -37,3 +37,11 @@ SHA-256 APK:
 ```text
 54FC36CC76861BB915CB33F9363581AC7B80F2E64BA67E2B6088FE4CB53D3D37
 ```
+
+## Release dengan R8 — 24 Oktober 2026
+
+- APK universal sebelum optimasi: 14.597.364 byte; sesudah optimasi: 9.977.146 byte (sekitar 32% lebih kecil). Semua ABI library native tetap disertakan.
+- Build APK/AAB release, lint Android, dan verifikasi tanda tangan APK: lulus. Build memakai kunci release, R8, serta resource shrinking.
+- Emulator API 37 dengan AVD uji terpisah: startup, onboarding, penulisan SQLite, saldo setelah restart proses, pemasangan update APK tanpa kehilangan data, penyimpanan PIN lewat Keystore, cold start terkunci, dan buka dengan PIN benar: lulus.
+- Dialog ekspor file native dan callback pembatalan: lulus. Pengingat mingguan menghasilkan alarm native; waktu pengiriman notifikasi belum diuji.
+- Bridge Capacitor dan implementasi pengingat dipertahankan dalam aturan R8 setelah pengujian menemukan panggilan pengingat yang tidak selesai pada konfigurasi awal.

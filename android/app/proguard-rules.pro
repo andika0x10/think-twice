@@ -7,6 +7,12 @@
 # Tink (via AndroidX Security) references optional compile-time annotations.
 -dontwarn javax.annotation.Nullable
 -dontwarn javax.annotation.concurrent.GuardedBy
+
+# Capacitor discovers inherited plugin APIs, permission metadata, and callbacks
+# through reflection. Keep the bridge and notification implementation intact;
+# AndroidX and the rest of the app can still be optimized.
+-keep class com.getcapacitor.** { *; }
+-keep class com.capacitorjs.plugins.localnotifications.** { *; }
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #
